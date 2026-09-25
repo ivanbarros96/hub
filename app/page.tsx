@@ -11,6 +11,7 @@ import {
   Layers3,
   LayoutDashboard,
   Menu,
+  MessageCircle,
   Moon,
   MoreHorizontal,
   Search,
@@ -18,6 +19,7 @@ import {
   Sun,
   X,
 } from 'lucide-react'
+import { WhatsAppScheduler } from '@/components/whatsapp-scheduler'
 
 type Project = {
   id: string
@@ -81,6 +83,18 @@ const projects: Project[] = [
     path: 'vivienda',
     tags: ['Vivienda', 'Subsidios', 'Planificación'],
   },
+  {
+    id: 'whatsapp',
+    name: 'Agendar WhatsApp',
+    description: 'Programa mensajes de WhatsApp desde tus dos instancias y elige el día y la hora de envío.',
+    category: 'Ventas y negocios',
+    accent: 'green',
+    icon: MessageCircle,
+    nodes: 0,
+    updated: 'Hoy',
+    path: 'whatsapp',
+    tags: ['WhatsApp', 'n8n', 'Automatización'],
+  },
 ]
 
 const categories = ['Finanzas personales', 'Ventas y negocios', 'Vivienda']
@@ -90,11 +104,13 @@ const accentTile: Record<string, string> = {
   coral: 'bg-[#fce9e4] text-[#d66f56] dark:bg-[#d66f56]/15 dark:text-[#eaa593]',
   orange: 'bg-[#fff0e4] text-[#db7b38] dark:bg-[#db7b38]/15 dark:text-[#e6a877]',
   blue: 'bg-[#e5edf8] text-[#5279a7] dark:bg-[#5279a7]/20 dark:text-[#9cbbe0]',
+  green: 'bg-[#e5f2e6] text-[#3f9d54] dark:bg-[#3f9d54]/15 dark:text-[#7fc98f]',
 }
 const accentGlow: Record<string, string> = {
   coral: 'from-[#d66f56]/25',
   orange: 'from-[#db7b38]/25',
   blue: 'from-[#5279a7]/25',
+  green: 'from-[#3f9d54]/25',
 }
 
 function useTheme() {
@@ -197,7 +213,7 @@ export default function Page() {
             <div className="mb-10 grid gap-4 sm:grid-cols-3">
               <Metric label="Proyectos totales" value={String(projects.length)} detail="Todos disponibles" icon={FolderKanban} accent="primary" />
               <Metric label="Casos de uso" value={String(categories.length)} detail="Cómo te ayudan" icon={Layers3} accent="green" />
-              <Metric label="Herramientas listas" value="3" detail="Para usar ahora" icon={Calculator} accent="orange" />
+              <Metric label="Herramientas listas" value={String(projects.filter((p) => !p.path.startsWith('http')).length)} detail="Para usar ahora" icon={Calculator} accent="orange" />
             </div>
 
             <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
@@ -229,7 +245,9 @@ export default function Page() {
           </div>
         </section>
       </div>
-      {selectedProject && <ProjectModal project={selectedProject} onClose={() => setSelectedProject(null)} />}
+      {selectedProject && (selectedProject.id === 'whatsapp'
+        ? <WhatsAppScheduler onClose={() => setSelectedProject(null)} />
+        : <ProjectModal project={selectedProject} onClose={() => setSelectedProject(null)} />)}
     </main>
   )
 }
