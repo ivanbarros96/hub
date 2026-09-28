@@ -10,9 +10,7 @@ import {
   Phone,
   Search,
   Send,
-  UserPlus,
   X,
-  Zap,
 } from 'lucide-react'
 import { getContacts, instances, scheduleWhatsApp, type Contact, type ScheduleResult } from '@/lib/whatsapp'
 
@@ -36,7 +34,6 @@ export function WhatsAppScheduler({ onClose }: { onClose: () => void }) {
   const [customName, setCustomName] = useState('')
   const [customPhone, setCustomPhone] = useState('')
   const [message, setMessage] = useState('')
-  const [sendNow, setSendNow] = useState(false)
   const [date, setDate] = useState('')
   const [time, setTime] = useState('')
   const [sending, setSending] = useState(false)
@@ -58,12 +55,12 @@ export function WhatsAppScheduler({ onClose }: { onClose: () => void }) {
 
   const canNext =
     step === 0 ? !!instanceId
-    : step === 1 ? (customMode ? customName.trim().length > 0 && validPhone(customPhone) : !!recipient)
+    : step === 1 ? (customMode ? validPhone(customPhone) : !!recipient)
     : step === 2 ? message.trim().length > 0
-    : sendNow || (!!date && !!time)
+    : !!date && !!time
 
   const goNext = () => {
-    if (step === 1 && customMode) setRecipient({ name: customName.trim(), phone: cleanPhone(customPhone) })
+    if (step === 1 && customMode) setRecipient({ name: customName.trim() || cleanPhone(customPhone), phone: cleanPhone(customPhone) })
     if (step < 3) setStep((s) => s + 1)
   }
   const goBack = () => setStep((s) => Math.max(0, s - 1))
@@ -71,10 +68,11 @@ export function WhatsAppScheduler({ onClose }: { onClose: () => void }) {
   const submit = async () => {
     if (!instance || !recipient) return
     setSending(true)
-    const sendAt = sendNow ? null : new Date(`${date}T${time}`).toISOString()
+    const sendAt = new Date(`${date}T${time}`).toISOString()
     const res = await scheduleWhatsApp({
       instanceId: instance.id,
       instanceLabel: instance.label,
+      instance: instance.instance,
       to: recipient.phone,
       name: recipient.name,
       message: message.trim(),
@@ -118,10 +116,10 @@ export function WhatsAppScheduler({ onClose }: { onClose: () => void }) {
               </div>
               {result.ok ? (
                 <>
-                  <p className="text-lg font-bold">{sendNow ? 'Mensaje enviado' : 'Mensaje agendado'}</p>
+                  <p className="text-lg font-bold">Mensaje agendado</p>
                   <p className="mt-1.5 max-w-xs text-sm text-muted-foreground">
-                    {sendNow ? 'Se envió' : 'Se enviará'} a {recipient?.name || recipient?.phone} desde {instance?.label}
-                    {!sendNow && date && time ? ` el ${date} a las ${time}` : ''}.
+                    Se enviará a {recipient?.name || recipient?.phone} desde {instance?.label}
+                    {date && time ? ` el ${date} a las ${time}` : ''}.
                   </p>
                   {result.simulated && <p className="mt-3 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">Modo demo: n8n aún no está conectado, así que esto fue una simulación.</p>}
                 </>
@@ -158,7 +156,7 @@ export function WhatsAppScheduler({ onClose }: { onClose: () => void }) {
               </div>
               {customMode ? (
                 <div className="space-y-3 pt-1">
-                  <label className="space-y-1.5 text-xs font-semibold"><span>Nombre</span><input value={customName} onChange={(e) => setCustomName(e.target.value)} placeholder="Nombre del contacto" className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm font-normal outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20" /></label>
+                  <label className="space-y-1.5 text-xs font-semibold"><span>Nombre <span className="font-normal text-muted-foreground">(opcional)</span></span><input value={customName} onChange={(e) => setCustomName(e.target.value)} placeholder="Nombre del contacto" className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm font-normal outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20" /></label>
                   <label className="space-y-1.5 text-xs font-semibold"><span>Número (con código de país)</span><input value={customPhone} onChange={(e) => setCustomPhone(e.target.value)} inputMode="tel" placeholder="+56 9 1234 5678" className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm font-normal outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20" />{customPhone && !validPhone(customPhone) && <span className="block text-[11px] font-normal text-[#d66f56]">Ingresa un número válido con código de país.</span>}</label>
                 </div>
               ) : (
@@ -194,23 +192,18 @@ export function WhatsAppScheduler({ onClose }: { onClose: () => void }) {
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="flex rounded-lg border border-border bg-muted/40 p-1">
-                <button onClick={() => setSendNow(true)} className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-2 text-xs font-semibold transition-all ${sendNow ? 'bg-card shadow-sm' : 'text-muted-foreground'}`}><Zap className="size-3.5" />Enviar ahora</button>
-                <button onClick={() => setSendNow(false)} className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-2 text-xs font-semibold transition-all ${!sendNow ? 'bg-card shadow-sm' : 'text-muted-foreground'}`}><CalendarClock className="size-3.5" />Programar</button>
+              <p className="flex items-center gap-1.5 text-sm text-muted-foreground"><CalendarClock className="size-4 text-[#3f9d54]" />Elige cuándo se enviará el mensaje.</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="space-y-1.5 text-xs font-semibold"><span>Día</span><input type="date" min={today} value={date} onChange={(e) => setDate(e.target.value)} className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm font-normal outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20" /></label>
+                <label className="space-y-1.5 text-xs font-semibold"><span>Hora</span><input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm font-normal outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20" /></label>
               </div>
-              {!sendNow && (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="space-y-1.5 text-xs font-semibold"><span>Día</span><input type="date" min={today} value={date} onChange={(e) => setDate(e.target.value)} className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm font-normal outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20" /></label>
-                  <label className="space-y-1.5 text-xs font-semibold"><span>Hora</span><input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm font-normal outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20" /></label>
-                </div>
-              )}
               <div className="rounded-xl border border-border bg-muted/40 p-4 text-sm">
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Resumen</p>
                 <div className="space-y-1.5 text-muted-foreground">
-                  <p><span className="font-medium text-foreground">Desde:</span> {instance?.label} ({instance?.number})</p>
+                  <p><span className="font-medium text-foreground">Desde:</span> {instance?.label}</p>
                   <p><span className="font-medium text-foreground">Para:</span> {recipient?.name} · {recipient?.phone}</p>
                   <p className="line-clamp-2"><span className="font-medium text-foreground">Mensaje:</span> {message}</p>
-                  <p><span className="font-medium text-foreground">Cuándo:</span> {sendNow ? 'Ahora' : date && time ? `${date} a las ${time}` : 'Elige día y hora'}</p>
+                  <p><span className="font-medium text-foreground">Cuándo:</span> {date && time ? `${date} a las ${time}` : 'Elige día y hora'}</p>
                 </div>
               </div>
             </div>
@@ -225,7 +218,7 @@ export function WhatsAppScheduler({ onClose }: { onClose: () => void }) {
             ) : (
               <button onClick={submit} disabled={!canNext || sending} className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-all disabled:opacity-40 ${green}`}>
                 {sending ? <span className="size-4 animate-spin rounded-full border-2 border-white border-t-transparent" /> : <Send className="size-4" />}
-                {sendNow ? 'Enviar' : 'Programar envío'}
+                Programar envío
               </button>
             )}
           </div>

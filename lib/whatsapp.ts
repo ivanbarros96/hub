@@ -7,6 +7,8 @@ export type WaInstance = {
   id: string
   label: string
   number: string
+  // Nombre exacto de la instancia en Evolution API (lo usa n8n para el envío).
+  instance: string
 }
 
 export type Contact = {
@@ -18,6 +20,8 @@ export type Contact = {
 export type SchedulePayload = {
   instanceId: string
   instanceLabel: string
+  // Nombre de la instancia en Evolution API (lo usa n8n en la URL de envío).
+  instance: string
   to: string
   name: string
   message: string
@@ -31,10 +35,10 @@ export type ScheduleResult = {
   error?: string
 }
 
-// Las dos instancias de Evolution API (etiquetas de ejemplo, ajústalas luego).
+// Instancias de Evolution API. `instance` debe coincidir EXACTO con el nombre
+// en Evolution. Agrega aquí la segunda instancia cuando la tengas.
 export const instances: WaInstance[] = [
-  { id: 'inst-1', label: 'Instancia 1', number: '+56 9 1111 1111' },
-  { id: 'inst-2', label: 'Instancia 2', number: '+56 9 2222 2222' },
+  { id: 'ivan-cl', label: 'Ivan', number: 'Instancia Ivan - CL', instance: 'Ivan - CL' },
 ]
 
 const mockContacts: Contact[] = [
