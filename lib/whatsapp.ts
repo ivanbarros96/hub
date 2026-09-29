@@ -41,17 +41,16 @@ export const instances: WaInstance[] = [
   { id: 'ivan-cl', label: 'Ivan', number: 'Instancia Ivan - CL', instance: 'Ivan - CL' },
 ]
 
-const mockContacts: Contact[] = [
-  { id: 'c1', name: 'María González', phone: '+56 9 8123 4567' },
-  { id: 'c2', name: 'Juan Pérez', phone: '+56 9 8234 5678' },
-  { id: 'c3', name: 'Camila Rojas', phone: '+56 9 8345 6789' },
-  { id: 'c4', name: 'Diego Muñoz', phone: '+56 9 8456 7890' },
-  { id: 'c5', name: 'Valentina Silva', phone: '+56 9 8567 8901' },
-  { id: 'c6', name: 'Sebastián Torres', phone: '+56 9 8678 9012' },
-]
-
-export function getContacts(): Contact[] {
-  return mockContacts
+// Trae los contactos reales de WhatsApp de una instancia (vía /api → n8n → Evolution).
+export async function fetchContacts(instance: string): Promise<Contact[]> {
+  try {
+    const res = await fetch(`/api/whatsapp/contacts?instance=${encodeURIComponent(instance)}`)
+    const data = (await res.json().catch(() => ({}))) as { contacts?: Contact[] }
+    if (!res.ok || !Array.isArray(data.contacts)) return []
+    return data.contacts
+  } catch {
+    return []
+  }
 }
 
 export async function scheduleWhatsApp(payload: SchedulePayload): Promise<ScheduleResult> {

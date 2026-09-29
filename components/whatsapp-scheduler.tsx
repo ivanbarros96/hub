@@ -12,7 +12,7 @@ import {
   Send,
   X,
 } from 'lucide-react'
-import { getContacts, instances, scheduleWhatsApp, type Contact, type ScheduleResult } from '@/lib/whatsapp'
+import { fetchContacts, instances, scheduleWhatsApp, type Contact, type ScheduleResult } from '@/lib/whatsapp'
 
 const steps = ['Remitente', 'Destinatario', 'Mensaje', 'Programar']
 
@@ -38,6 +38,9 @@ export function WhatsAppScheduler({ onClose }: { onClose: () => void }) {
   const [time, setTime] = useState('')
   const [sending, setSending] = useState(false)
   const [result, setResult] = useState<ScheduleResult | null>(null)
+  const [allContacts, setAllContacts] = useState<Contact[]>([])
+  const [loadingContacts, setLoadingContacts] = useState(false)
+  const [contactsError, setContactsError] = useState(false)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
@@ -45,11 +48,46 @@ export function WhatsAppScheduler({ onClose }: { onClose: () => void }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
+  const [reloadKey, setReloadKey] = useState(0)
   const instance = instances.find((i) => i.id === instanceId) || null
+
+  useEffect(() => {
+    if (!instanceId) return
+    let cancelled = false
+    setLoadingContacts(true)
+    setContactsError(false)
+    const inst = instances.find((i) => i.id === instanceId)
+    fetchContacts(inst?.instance || '').then((list) => {
+      if (cancelled) return
+      const key = (s: string) => s.replace(/^[^\p{L}\p{N}]+/u, '').toLocaleLowerCase('es')
+      const sorted = [...list].sort((a, b) => {
+        const an = a.name ? 0 : 1
+        const bn = b.name ? 0 : 1
+        if (an !== bn) return an - bn
+        if (a.name && b.name) return key(a.name).localeCompare(key(b.name), 'es')
+        return a.phone.localeCompare(b.phone)
+      })
+      setAllContacts(sorted)
+      setContactsError(list.length === 0)
+      setLoadingContacts(false)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [instanceId, reloadKey])
+
+  const MAX_RENDER = 60
   const contacts = useMemo(() => {
-    const q = contactQuery.toLowerCase()
-    return getContacts().filter((c) => [c.name, c.phone].join(' ').toLowerCase().includes(q))
-  }, [contactQuery])
+    const q = contactQuery.toLowerCase().trim()
+    const filtered = q
+      ? allContacts.filter((c) => [c.name, c.phone].join(' ').toLowerCase().includes(q))
+      : allContacts
+    return filtered.slice(0, MAX_RENDER)
+  }, [contactQuery, allContacts])
+  const totalMatches = useMemo(() => {
+    const q = contactQuery.toLowerCase().trim()
+    return q ? allContacts.filter((c) => [c.name, c.phone].join(' ').toLowerCase().includes(q)).length : allContacts.length
+  }, [contactQuery, allContacts])
 
   const today = new Date().toISOString().slice(0, 10)
 
@@ -163,21 +201,42 @@ export function WhatsAppScheduler({ onClose }: { onClose: () => void }) {
                 <>
                   <div className="relative">
                     <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <input value={contactQuery} onChange={(e) => setContactQuery(e.target.value)} placeholder="Buscar contacto..." className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20" />
+                    <input value={contactQuery} onChange={(e) => setContactQuery(e.target.value)} placeholder="Buscar por nombre o número..." disabled={loadingContacts} className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:opacity-60" />
                   </div>
-                  <div className="max-h-52 space-y-1 overflow-y-auto">
-                    {contacts.map((c) => {
-                      const active = recipient?.phone === c.phone && !customMode
-                      return (
-                        <button key={c.id} onClick={() => setRecipient({ name: c.name, phone: c.phone })} className={`flex w-full items-center gap-3 rounded-lg p-2.5 text-left transition-colors ${active ? 'bg-[#e5f2e6]/60 dark:bg-[#3f9d54]/10' : 'hover:bg-muted'}`}>
-                          <div className="grid size-9 place-items-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">{c.name.split(' ').map((p) => p[0]).slice(0, 2).join('')}</div>
-                          <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{c.name}</p><p className="truncate text-xs text-muted-foreground">{c.phone}</p></div>
-                          {active && <Check className="size-4 shrink-0 text-[#3f9d54]" />}
-                        </button>
-                      )
-                    })}
-                    {contacts.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">Sin resultados. Prueba con “Número nuevo”.</p>}
-                  </div>
+                  {loadingContacts ? (
+                    <div className="space-y-1">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <div key={i} className="flex items-center gap-3 p-2.5">
+                          <div className="size-9 shrink-0 animate-pulse rounded-full bg-muted" />
+                          <div className="flex-1 space-y-1.5"><div className="h-3 w-1/3 animate-pulse rounded bg-muted" /><div className="h-2.5 w-1/4 animate-pulse rounded bg-muted" /></div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : contactsError ? (
+                    <div className="py-8 text-center">
+                      <p className="text-sm font-medium">No pudimos cargar tus contactos</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Revisa tu conexión o usa “Número nuevo”.</p>
+                      <button onClick={() => setReloadKey((k) => k + 1)} className="mt-3 rounded-lg border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted">Reintentar</button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="max-h-52 space-y-1 overflow-y-auto">
+                        {contacts.map((c) => {
+                          const active = recipient?.phone === c.phone && !customMode
+                          const initials = c.name ? c.name.replace(/[^\p{L}\p{N} ]/gu, '').trim().split(/\s+/).map((p) => p[0]).slice(0, 2).join('').toUpperCase() : '#'
+                          return (
+                            <button key={c.id} onClick={() => setRecipient({ name: c.name || c.phone, phone: c.phone })} className={`flex w-full items-center gap-3 rounded-lg p-2.5 text-left transition-colors ${active ? 'bg-[#e5f2e6]/60 dark:bg-[#3f9d54]/10' : 'hover:bg-muted'}`}>
+                              <div className="grid size-9 shrink-0 place-items-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">{initials || '#'}</div>
+                              <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{c.name || c.phone}</p><p className="truncate text-xs text-muted-foreground">{c.phone}</p></div>
+                              {active && <Check className="size-4 shrink-0 text-[#3f9d54]" />}
+                            </button>
+                          )
+                        })}
+                        {contacts.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">Sin resultados. Prueba con “Número nuevo”.</p>}
+                      </div>
+                      {totalMatches > contacts.length && <p className="pt-1 text-center text-[11px] text-muted-foreground">Mostrando {contacts.length} de {totalMatches}. Escribe para afinar la búsqueda.</p>}
+                    </>
+                  )}
                 </>
               )}
             </div>

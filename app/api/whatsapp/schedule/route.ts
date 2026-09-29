@@ -1,7 +1,9 @@
-// Proxy servidor → n8n para agendar/enviar mensajes de WhatsApp.
-// Mantiene la URL del webhook fuera del cliente (variable de entorno en Vercel).
-// UI-first: si N8N_WHATSAPP_WEBHOOK no está configurada, simula éxito para poder
-// probar el flujo completo sin n8n. Al definir la variable, envía de verdad.
+// Proxy servidor → n8n para agendar mensajes de WhatsApp.
+// n8n (webhook abivan-agendar) espera hasta la fecha/hora y envía por Evolution,
+// manteniendo la apikey fuera del navegador. La URL de n8n no es secreta; se
+// puede sobreescribir con la variable de entorno.
+
+const N8N_SCHEDULE_URL = 'https://n8n.srv1489770.hstgr.cloud/webhook/abivan-agendar'
 
 export async function POST(request: Request) {
   const payload = await request.json().catch(() => null)
@@ -9,16 +11,12 @@ export async function POST(request: Request) {
     return Response.json({ ok: false, error: 'Datos incompletos.' }, { status: 400 })
   }
 
-  const webhook = process.env.N8N_WHATSAPP_WEBHOOK
-  if (!webhook) {
-    return Response.json({ ok: true, simulated: true })
-  }
-
   try {
-    const res = await fetch(webhook, {
+    const res = await fetch(N8N_SCHEDULE_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(25000),
     })
     if (!res.ok) {
       return Response.json({ ok: false, error: `n8n respondió ${res.status}` }, { status: 502 })
