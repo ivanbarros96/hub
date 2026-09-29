@@ -25,6 +25,32 @@ function validPhone(raw: string) {
   return cleanPhone(raw).replace('+', '').length >= 8
 }
 
+// El horario siempre se interpreta en Santiago de Chile, sin importar el
+// dispositivo. Convierte una fecha/hora local de Chile al instante UTC (ISO),
+// respetando el horario de verano/invierno vía Intl (sin librerías).
+const TZ = 'America/Santiago'
+function zonedToISO(dateStr: string, timeStr: string, timeZone = TZ) {
+  const [y, mo, d] = dateStr.split('-').map(Number)
+  const [h, mi] = timeStr.split(':').map(Number)
+  const utcGuess = Date.UTC(y, mo - 1, d, h, mi, 0)
+  const dtf = new Intl.DateTimeFormat('en-US', {
+    timeZone, hour12: false,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  })
+  const parts = Object.fromEntries(dtf.formatToParts(new Date(utcGuess)).map((p) => [p.type, p.value]))
+  const asZoned = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second)
+  const offset = asZoned - utcGuess
+  return new Date(utcGuess - offset).toISOString()
+}
+function todayInTZ(timeZone = TZ) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' })
+      .formatToParts(new Date()).map((p) => [p.type, p.value]),
+  )
+  return `${parts.year}-${parts.month}-${parts.day}`
+}
+
 export function WhatsAppScheduler({ onClose }: { onClose: () => void }) {
   const [step, setStep] = useState(0)
   const [instanceId, setInstanceId] = useState<string | null>(null)
@@ -89,7 +115,7 @@ export function WhatsAppScheduler({ onClose }: { onClose: () => void }) {
     return q ? allContacts.filter((c) => [c.name, c.phone].join(' ').toLowerCase().includes(q)).length : allContacts.length
   }, [contactQuery, allContacts])
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayInTZ()
 
   const canNext =
     step === 0 ? !!instanceId
@@ -106,7 +132,7 @@ export function WhatsAppScheduler({ onClose }: { onClose: () => void }) {
   const submit = async () => {
     if (!instance || !recipient) return
     setSending(true)
-    const sendAt = new Date(`${date}T${time}`).toISOString()
+    const sendAt = zonedToISO(date, time)
     const res = await scheduleWhatsApp({
       instanceId: instance.id,
       instanceLabel: instance.label,
