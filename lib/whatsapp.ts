@@ -35,18 +35,40 @@ export type ScheduleResult = {
   error?: string
 }
 
-// Instancias de Evolution API. `instance` debe coincidir EXACTO con el nombre
-// en Evolution. Agrega aquí la segunda instancia cuando la tengas.
+// Instancias de Evolution API (remitentes). `instance` debe coincidir EXACTO con
+// el nombre en Evolution.
 export const instances: WaInstance[] = [
-  { id: 'ivan-cl', label: 'Ivan', number: 'Instancia Ivan - CL', instance: 'Ivan - CL' },
+  { id: 'ivan-cl', label: 'Ivan CL', number: '+56 9 5692 0968', instance: 'Ivan - CL' },
+  { id: 'ivan-co', label: 'Ivan CO', number: '+57 324 984 2630', instance: 'Ivan - CO' },
+  { id: 'abi', label: 'Abi', number: '+56 9 5655 6487', instance: 'Abi' },
 ]
 
-// Trae los contactos reales de WhatsApp de una instancia (vía /api → n8n → Evolution).
-export async function fetchContacts(instance: string): Promise<Contact[]> {
+// Trae los contactos reales unidos de todas las instancias (vía /api → n8n →
+// Evolution). Se cachean en el navegador ~15 días para no consultar cada vez.
+const CACHE_KEY = 'abivan_wa_contacts_v1'
+const CACHE_TTL = 15 * 24 * 60 * 60 * 1000
+
+export async function fetchContacts(force = false): Promise<Contact[]> {
+  if (!force) {
+    try {
+      const raw = localStorage.getItem(CACHE_KEY)
+      if (raw) {
+        const cached = JSON.parse(raw) as { ts: number; contacts: Contact[] }
+        if (Array.isArray(cached.contacts) && Date.now() - cached.ts < CACHE_TTL) {
+          return cached.contacts
+        }
+      }
+    } catch {}
+  }
   try {
-    const res = await fetch(`/api/whatsapp/contacts?instance=${encodeURIComponent(instance)}`)
+    const res = await fetch('/api/whatsapp/contacts')
     const data = (await res.json().catch(() => ({}))) as { contacts?: Contact[] }
     if (!res.ok || !Array.isArray(data.contacts)) return []
+    if (data.contacts.length > 0) {
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), contacts: data.contacts }))
+      } catch {}
+    }
     return data.contacts
   } catch {
     return []

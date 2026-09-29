@@ -8,6 +8,7 @@ import {
   Check,
   MessageCircle,
   Phone,
+  RefreshCw,
   Search,
   Send,
   X,
@@ -78,29 +79,19 @@ export function WhatsAppScheduler({ onClose }: { onClose: () => void }) {
   const instance = instances.find((i) => i.id === instanceId) || null
 
   useEffect(() => {
-    if (!instanceId) return
     let cancelled = false
     setLoadingContacts(true)
     setContactsError(false)
-    const inst = instances.find((i) => i.id === instanceId)
-    fetchContacts(inst?.instance || '').then((list) => {
+    fetchContacts(reloadKey > 0).then((list) => {
       if (cancelled) return
-      const key = (s: string) => s.replace(/^[^\p{L}\p{N}]+/u, '').toLocaleLowerCase('es')
-      const sorted = [...list].sort((a, b) => {
-        const an = a.name ? 0 : 1
-        const bn = b.name ? 0 : 1
-        if (an !== bn) return an - bn
-        if (a.name && b.name) return key(a.name).localeCompare(key(b.name), 'es')
-        return a.phone.localeCompare(b.phone)
-      })
-      setAllContacts(sorted)
+      setAllContacts(list)
       setContactsError(list.length === 0)
       setLoadingContacts(false)
     })
     return () => {
       cancelled = true
     }
-  }, [instanceId, reloadKey])
+  }, [reloadKey])
 
   const MAX_RENDER = 60
   const contacts = useMemo(() => {
@@ -225,9 +216,12 @@ export function WhatsAppScheduler({ onClose }: { onClose: () => void }) {
                 </div>
               ) : (
                 <>
-                  <div className="relative">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <input value={contactQuery} onChange={(e) => setContactQuery(e.target.value)} placeholder="Buscar por nombre o número..." disabled={loadingContacts} className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:opacity-60" />
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                      <input value={contactQuery} onChange={(e) => setContactQuery(e.target.value)} placeholder="Buscar por nombre o número..." disabled={loadingContacts} className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:opacity-60" />
+                    </div>
+                    <button onClick={() => setReloadKey((k) => k + 1)} disabled={loadingContacts} title="Actualizar contactos" aria-label="Actualizar contactos" className="grid size-10 shrink-0 place-items-center rounded-lg border border-border text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"><RefreshCw className={`size-4 ${loadingContacts ? 'animate-spin' : ''}`} /></button>
                   </div>
                   {loadingContacts ? (
                     <div className="space-y-1">
