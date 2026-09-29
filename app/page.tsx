@@ -229,8 +229,8 @@ export default function Page() {
             </div>
 
             <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-              {filteredProjects.map((project) => (
-                <ProjectCard key={project.id} project={project} onOpen={() => setSelectedProject(project)} />
+              {filteredProjects.map((project, i) => (
+                <ProjectCard key={project.id} project={project} index={i} onOpen={() => setSelectedProject(project)} />
               ))}
               {filteredProjects.length === 0 && (
                 <div className="col-span-full rounded-2xl border border-dashed border-border py-16 text-center">
@@ -266,12 +266,12 @@ function Metric({ label, value, detail, icon: Icon, accent }: { label: string; v
   )
 }
 
-function ProjectCard({ project, onOpen }: { project: Project; onOpen: () => void }) {
+function ProjectCard({ project, index = 0, onOpen }: { project: Project; index?: number; onOpen: () => void }) {
   const Icon = project.icon
   const isExternal = project.path.startsWith('http')
   const open = () => (isExternal ? window.open(project.path, '_blank', 'noopener,noreferrer') : onOpen())
   return (
-    <article className="group relative flex min-h-[300px] cursor-pointer flex-col overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5" onClick={open}>
+    <article role="button" tabIndex={0} aria-label={`Abrir ${project.name}`} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open() } }} style={{ animationDelay: `${index * 60}ms`, animationFillMode: 'backwards' }} className="group relative flex min-h-[300px] cursor-pointer flex-col overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-sm transition-all duration-300 animate-in fade-in slide-in-from-bottom-3 hover:-translate-y-1 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5 focus-visible:border-primary/50 active:scale-[0.99]" onClick={open}>
       <div className={`pointer-events-none absolute -top-16 right-0 h-32 w-32 rounded-full bg-gradient-to-b ${accentGlow[project.accent]} to-transparent opacity-0 blur-2xl transition-opacity duration-300 group-hover:opacity-100`} />
       <div className="mb-6 flex items-start justify-between">
         <div className={`grid size-11 place-items-center overflow-hidden rounded-xl ${accentTile[project.accent]}`}>

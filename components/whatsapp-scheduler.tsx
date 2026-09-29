@@ -26,6 +26,18 @@ function validPhone(raw: string) {
   return cleanPhone(raw).replace('+', '').length >= 8
 }
 
+// Color estable por contacto (a partir del número/nombre) para los avatares.
+function avatarStyle(seed: string): React.CSSProperties {
+  let h = 0
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) % 360
+  return { backgroundColor: `hsl(${h} 45% 88%)`, color: `hsl(${h} 55% 32%)` }
+}
+function initialsOf(name: string) {
+  const clean = name.replace(/[^\p{L}\p{N} ]/gu, '').trim()
+  if (!clean) return '#'
+  return clean.split(/\s+/).map((p) => p[0]).slice(0, 2).join('').toUpperCase()
+}
+
 // El horario siempre se interpreta en Santiago de Chile, sin importar el
 // dispositivo. Convierte una fecha/hora local de Chile al instante UTC (ISO),
 // respetando el horario de verano/invierno vía Intl (sin librerías).
@@ -69,11 +81,17 @@ export function WhatsAppScheduler({ onClose }: { onClose: () => void }) {
   const [loadingContacts, setLoadingContacts] = useState(false)
   const [contactsError, setContactsError] = useState(false)
 
+  const messageRef = useRef<HTMLTextAreaElement>(null)
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
+
+  useEffect(() => {
+    if (step === 2) messageRef.current?.focus()
+  }, [step])
 
   const [reloadKey, setReloadKey] = useState(0)
   const forceRef = useRef(false)
@@ -167,16 +185,24 @@ export function WhatsAppScheduler({ onClose }: { onClose: () => void }) {
         </div>
 
         {!result && (
-          <div className="flex items-center gap-1.5 px-5 pt-4">
+          <div className="grid grid-cols-4 gap-2 px-5 pt-4">
             {steps.map((label, i) => (
-              <div key={label} className="flex flex-1 items-center gap-1.5">
-                <div className={`h-1.5 flex-1 rounded-full transition-colors ${i <= step ? 'bg-[#3f9d54]' : 'bg-muted'}`} />
-              </div>
+              <button
+                key={label}
+                type="button"
+                disabled={i > step}
+                onClick={() => i < step && setStep(i)}
+                className="group flex flex-col gap-1.5 text-left outline-none disabled:cursor-default"
+                aria-label={`Paso ${i + 1}: ${label}${i < step ? ' (completado)' : ''}`}
+              >
+                <span className={`h-1.5 rounded-full transition-colors ${i <= step ? 'bg-[#3f9d54]' : 'bg-muted'}`} />
+                <span className={`text-[10px] font-medium transition-colors ${i === step ? 'text-foreground' : i < step ? 'text-muted-foreground group-hover:text-foreground' : 'text-muted-foreground/50'}`}>{label}</span>
+              </button>
             ))}
           </div>
         )}
 
-        <div className="min-h-[280px] overflow-y-auto p-5">
+        <div key={result ? 'result' : step} className="min-h-[280px] overflow-y-auto p-5 duration-200 animate-in fade-in slide-in-from-right-1">
           {result ? (
             <div className="grid place-items-center py-10 text-center">
               <div className={`mb-4 grid size-14 place-items-center rounded-full ${result.ok ? 'bg-[#e5f2e6] text-[#3f9d54]' : 'bg-[#fce9e4] text-[#d66f56]'}`}>
@@ -205,13 +231,17 @@ export function WhatsAppScheduler({ onClose }: { onClose: () => void }) {
               {instances.map((inst) => {
                 const active = instanceId === inst.id
                 return (
-                  <button key={inst.id} onClick={() => setInstanceId(inst.id)} className={`flex w-full items-center gap-3 rounded-xl border p-4 text-left transition-all ${active ? 'border-[#3f9d54] bg-[#e5f2e6]/50 dark:bg-[#3f9d54]/10' : 'border-border hover:bg-muted'}`}>
+                  <button key={inst.id} onClick={() => setInstanceId(inst.id)} className={`flex w-full items-center gap-3 rounded-xl border p-4 text-left transition-all active:scale-[0.99] ${active ? 'border-[#3f9d54] bg-[#e5f2e6]/50 shadow-sm dark:bg-[#3f9d54]/10' : 'border-border hover:border-[#3f9d54]/40 hover:bg-muted'}`}>
                     <div className="grid size-10 place-items-center rounded-lg bg-[#e5f2e6] text-[#3f9d54] dark:bg-[#3f9d54]/15 dark:text-[#7fc98f]"><Phone className="size-[18px]" /></div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold">{inst.label}</p>
                       <p className="text-xs text-muted-foreground">{inst.number}</p>
                     </div>
-                    {active && <Check className="size-5 shrink-0 text-[#3f9d54]" />}
+                    {active ? (
+                      <span className="grid size-6 shrink-0 place-items-center rounded-full bg-[#3f9d54] text-white"><Check className="size-3.5" /></span>
+                    ) : (
+                      <span className="flex shrink-0 items-center gap-1.5 text-[10px] font-medium text-[#3f9d54]"><span className="size-1.5 rounded-full bg-[#3f9d54]" />En línea</span>
+                    )}
                   </button>
                 )
               })}
@@ -256,12 +286,11 @@ export function WhatsAppScheduler({ onClose }: { onClose: () => void }) {
                       <div className="max-h-52 space-y-1 overflow-y-auto">
                         {contacts.map((c) => {
                           const active = recipient?.phone === c.phone && !customMode
-                          const initials = c.name ? c.name.replace(/[^\p{L}\p{N} ]/gu, '').trim().split(/\s+/).map((p) => p[0]).slice(0, 2).join('').toUpperCase() : '#'
                           return (
-                            <button key={c.id} onClick={() => setRecipient({ name: c.name || c.phone, phone: c.phone })} className={`flex w-full items-center gap-3 rounded-lg p-2.5 text-left transition-colors ${active ? 'bg-[#e5f2e6]/60 dark:bg-[#3f9d54]/10' : 'hover:bg-muted'}`}>
-                              <div className="grid size-9 shrink-0 place-items-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">{initials || '#'}</div>
+                            <button key={c.id} onClick={() => setRecipient({ name: c.name || c.phone, phone: c.phone })} className={`flex w-full items-center gap-3 rounded-lg p-2.5 text-left transition-colors active:scale-[0.99] ${active ? 'bg-[#e5f2e6]/60 dark:bg-[#3f9d54]/10' : 'hover:bg-muted'}`}>
+                              <div className="grid size-9 shrink-0 place-items-center rounded-full text-xs font-semibold" style={avatarStyle(c.phone)}>{initialsOf(c.name)}</div>
                               <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{c.name || c.phone}</p><p className="truncate text-xs text-muted-foreground">{c.phone}</p></div>
-                              {active && <Check className="size-4 shrink-0 text-[#3f9d54]" />}
+                              {active && <span className="grid size-5 shrink-0 place-items-center rounded-full bg-[#3f9d54] text-white"><Check className="size-3" /></span>}
                             </button>
                           )
                         })}
@@ -278,7 +307,7 @@ export function WhatsAppScheduler({ onClose }: { onClose: () => void }) {
               <p className="text-sm text-muted-foreground">Para <span className="font-semibold text-foreground">{recipient?.name || recipient?.phone}</span> desde <span className="font-semibold text-foreground">{instance?.label}</span>.</p>
               <label className="space-y-1.5 text-xs font-semibold">
                 <span>Mensaje</span>
-                <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={6} placeholder="Escribe tu mensaje..." className="w-full resize-none rounded-lg border border-input bg-background p-3 text-sm font-normal outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20" />
+                <textarea ref={messageRef} value={message} onChange={(e) => setMessage(e.target.value)} rows={6} placeholder="Escribe tu mensaje..." className="w-full resize-none rounded-lg border border-input bg-background p-3 text-sm font-normal outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20" />
               </label>
               <p className="text-right text-xs text-muted-foreground tabular-nums">{message.length} caracteres</p>
             </div>
@@ -306,9 +335,9 @@ export function WhatsAppScheduler({ onClose }: { onClose: () => void }) {
           <div className="flex items-center justify-between gap-3 border-t border-border p-5">
             <button onClick={goBack} disabled={step === 0} className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors enabled:hover:bg-muted disabled:opacity-40"><ArrowLeft className="size-4" />Atrás</button>
             {step < 3 ? (
-              <button onClick={goNext} disabled={!canNext} className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-all disabled:opacity-40 ${green}`}>Continuar <ArrowRight className="size-4" /></button>
+              <button onClick={goNext} disabled={!canNext} className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-40 ${green}`}>Continuar <ArrowRight className="size-4" /></button>
             ) : (
-              <button onClick={submit} disabled={!canNext || sending} className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-all disabled:opacity-40 ${green}`}>
+              <button onClick={submit} disabled={!canNext || sending} className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-40 ${green}`}>
                 {sending ? <span className="size-4 animate-spin rounded-full border-2 border-white border-t-transparent" /> : <Send className="size-4" />}
                 Programar envío
               </button>
