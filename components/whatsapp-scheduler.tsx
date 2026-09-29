@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowLeft,
   ArrowRight,
@@ -76,13 +76,21 @@ export function WhatsAppScheduler({ onClose }: { onClose: () => void }) {
   }, [onClose])
 
   const [reloadKey, setReloadKey] = useState(0)
+  const forceRef = useRef(false)
   const instance = instances.find((i) => i.id === instanceId) || null
 
   useEffect(() => {
+    if (!instanceId) {
+      setAllContacts([])
+      return
+    }
     let cancelled = false
+    const force = forceRef.current
+    forceRef.current = false
     setLoadingContacts(true)
     setContactsError(false)
-    fetchContacts(reloadKey > 0).then((list) => {
+    const inst = instances.find((i) => i.id === instanceId)
+    fetchContacts(inst?.instance || '', force).then((list) => {
       if (cancelled) return
       setAllContacts(list)
       setContactsError(list.length === 0)
@@ -91,7 +99,12 @@ export function WhatsAppScheduler({ onClose }: { onClose: () => void }) {
     return () => {
       cancelled = true
     }
-  }, [reloadKey])
+  }, [instanceId, reloadKey])
+
+  const refreshContacts = () => {
+    forceRef.current = true
+    setReloadKey((k) => k + 1)
+  }
 
   const MAX_RENDER = 60
   const contacts = useMemo(() => {
@@ -221,7 +234,7 @@ export function WhatsAppScheduler({ onClose }: { onClose: () => void }) {
                       <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                       <input value={contactQuery} onChange={(e) => setContactQuery(e.target.value)} placeholder="Buscar por nombre o número..." disabled={loadingContacts} className="h-10 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20 disabled:opacity-60" />
                     </div>
-                    <button onClick={() => setReloadKey((k) => k + 1)} disabled={loadingContacts} title="Actualizar contactos" aria-label="Actualizar contactos" className="grid size-10 shrink-0 place-items-center rounded-lg border border-border text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"><RefreshCw className={`size-4 ${loadingContacts ? 'animate-spin' : ''}`} /></button>
+                    <button onClick={refreshContacts} disabled={loadingContacts} title="Actualizar contactos" aria-label="Actualizar contactos" className="grid size-10 shrink-0 place-items-center rounded-lg border border-border text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"><RefreshCw className={`size-4 ${loadingContacts ? 'animate-spin' : ''}`} /></button>
                   </div>
                   {loadingContacts ? (
                     <div className="space-y-1">
@@ -236,7 +249,7 @@ export function WhatsAppScheduler({ onClose }: { onClose: () => void }) {
                     <div className="py-8 text-center">
                       <p className="text-sm font-medium">No pudimos cargar tus contactos</p>
                       <p className="mt-1 text-xs text-muted-foreground">Revisa tu conexión o usa “Número nuevo”.</p>
-                      <button onClick={() => setReloadKey((k) => k + 1)} className="mt-3 rounded-lg border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted">Reintentar</button>
+                      <button onClick={refreshContacts} className="mt-3 rounded-lg border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted">Reintentar</button>
                     </div>
                   ) : (
                     <>

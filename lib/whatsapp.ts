@@ -43,15 +43,17 @@ export const instances: WaInstance[] = [
   { id: 'abi', label: 'Abi', number: '+56 9 5655 6487', instance: 'Abi' },
 ]
 
-// Trae los contactos reales unidos de todas las instancias (vía /api → n8n →
-// Evolution). Se cachean en el navegador ~15 días para no consultar cada vez.
-const CACHE_KEY = 'abivan_wa_contacts_v1'
-const CACHE_TTL = 15 * 24 * 60 * 60 * 1000
+// Trae los contactos guardados de UNA instancia (vía /api → n8n → Data Table).
+// Cachea por instancia en el navegador ~1 día (la tabla central ya guarda la
+// versión de 15 días); "force" salta la caché para refrescar a mano.
+const CACHE_PREFIX = 'abivan_wa_contacts_v2:'
+const CACHE_TTL = 24 * 60 * 60 * 1000
 
-export async function fetchContacts(force = false): Promise<Contact[]> {
+export async function fetchContacts(instance: string, force = false): Promise<Contact[]> {
+  const cacheKey = CACHE_PREFIX + instance
   if (!force) {
     try {
-      const raw = localStorage.getItem(CACHE_KEY)
+      const raw = localStorage.getItem(cacheKey)
       if (raw) {
         const cached = JSON.parse(raw) as { ts: number; contacts: Contact[] }
         if (Array.isArray(cached.contacts) && Date.now() - cached.ts < CACHE_TTL) {
@@ -61,12 +63,12 @@ export async function fetchContacts(force = false): Promise<Contact[]> {
     } catch {}
   }
   try {
-    const res = await fetch('/api/whatsapp/contacts')
+    const res = await fetch(`/api/whatsapp/contacts?instance=${encodeURIComponent(instance)}`)
     const data = (await res.json().catch(() => ({}))) as { contacts?: Contact[] }
     if (!res.ok || !Array.isArray(data.contacts)) return []
     if (data.contacts.length > 0) {
       try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), contacts: data.contacts }))
+        localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), contacts: data.contacts }))
       } catch {}
     }
     return data.contacts
