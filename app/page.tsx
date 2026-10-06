@@ -72,6 +72,18 @@ const projects: Project[] = [
     tags: ['Ventas y negocios', 'Mercado Libre', 'Panel de ventas'],
   },
   {
+    id: 'panel-meli',
+    name: 'Panel MELI',
+    description: 'Sincroniza el stock y gestiona las ventas de Mercado Libre desde un solo panel.',
+    category: 'Ventas y negocios',
+    accent: 'orange',
+    icon: LayoutDashboard,
+    nodes: 0,
+    updated: '',
+    path: 'https://panel-meli.vercel.app',
+    tags: ['Ventas y negocios', 'Mercado Libre', 'Stock y ventas'],
+  },
+  {
     id: 'vivienda',
     name: 'Subsidio de Vivienda',
     description: 'Evalúa tu subsidio y capacidad de crédito para encontrar tu vivienda.',
@@ -275,7 +287,7 @@ function ProjectCard({ project, index = 0, onOpen }: { project: Project; index?:
       <div className={`pointer-events-none absolute -top-16 right-0 h-32 w-32 rounded-full bg-gradient-to-b ${accentGlow[project.accent]} to-transparent opacity-0 blur-2xl transition-opacity duration-300 group-hover:opacity-100`} />
       <div className="mb-6 flex items-start justify-between">
         <div className={`grid size-11 place-items-center overflow-hidden rounded-xl ${accentTile[project.accent]}`}>
-          {project.id === 'meli' || project.id === 'meli-bolt' ? <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/imagen-gViNNlbewuXS1LEvV3Q7qM4UP0hVQZ.png" alt="Mercado Libre" className="size-full object-contain p-1" /> : <Icon className="size-5" />}
+          {project.id === 'meli' || project.id === 'meli-bolt' || project.id === 'panel-meli' ? <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/imagen-gViNNlbewuXS1LEvV3Q7qM4UP0hVQZ.png" alt="Mercado Libre" className="size-full object-contain p-1" /> : <Icon className="size-5" />}
         </div>
         <div className="flex items-center gap-2">
           <span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">{project.category}</span>
