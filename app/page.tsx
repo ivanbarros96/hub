@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   ArrowUpRight,
-  BarChart3,
   Calculator,
   Clock3,
   FolderKanban,
@@ -46,30 +45,6 @@ const projects: Project[] = [
     updated: 'Hoy, 10:42',
     path: 'panales',
     tags: ['Finanzas personales', 'Calculadora', 'Ahorro'],
-  },
-  {
-    id: 'meli',
-    name: 'Ganancia MELI',
-    description: 'Calcula la ganancia neta de tus ventas en Mercado Libre en CLP.',
-    category: 'Ventas y negocios',
-    accent: 'orange',
-    icon: BarChart3,
-    nodes: 8,
-    updated: 'Ayer, 18:20',
-    path: 'Ganancia-MELI',
-    tags: ['Ventas y negocios', 'Mercado Libre', 'Rentabilidad'],
-  },
-  {
-    id: 'meli-bolt',
-    name: 'MELI Dashboard',
-    description: 'Panel para visualizar y gestionar información de Mercado Libre.',
-    category: 'Ventas y negocios',
-    accent: 'orange',
-    icon: LayoutDashboard,
-    nodes: 0,
-    updated: '',
-    path: 'https://meli.bolt.host',
-    tags: ['Ventas y negocios', 'Mercado Libre', 'Panel de ventas'],
   },
   {
     id: 'panel-meli',
@@ -287,7 +262,7 @@ function ProjectCard({ project, index = 0, onOpen }: { project: Project; index?:
       <div className={`pointer-events-none absolute -top-16 right-0 h-32 w-32 rounded-full bg-gradient-to-b ${accentGlow[project.accent]} to-transparent opacity-0 blur-2xl transition-opacity duration-300 group-hover:opacity-100`} />
       <div className="mb-6 flex items-start justify-between">
         <div className={`grid size-11 place-items-center overflow-hidden rounded-xl ${accentTile[project.accent]}`}>
-          {project.id === 'meli' || project.id === 'meli-bolt' || project.id === 'panel-meli' ? <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/imagen-gViNNlbewuXS1LEvV3Q7qM4UP0hVQZ.png" alt="Mercado Libre" className="size-full object-contain p-1" /> : <Icon className="size-5" />}
+          {project.id === 'panel-meli' ? <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/imagen-gViNNlbewuXS1LEvV3Q7qM4UP0hVQZ.png" alt="Mercado Libre" className="size-full object-contain p-1" /> : <Icon className="size-5" />}
         </div>
         <div className="flex items-center gap-2">
           <span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">{project.category}</span>
@@ -323,8 +298,6 @@ function ProjectModal({ project, onClose }: { project: Project; onClose: () => v
   const field = (key: string, label: string, placeholder: string) => <label className="space-y-1.5 text-xs font-semibold"><span>{label}</span><input type="number" min="0" value={values[key] || ''} onChange={(event) => setValue(key, event.target.value)} placeholder={placeholder} className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm font-normal outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20" /></label>
   const reset = () => { setValues({}); setMode('ds1'); setTramo(1) }
   const panal = value('price') > 0 && value('count') > 0 ? value('price') / value('count') : 0
-  const meliCobro = value('sale') > 0 && value('cost') >= 0 ? value('sale') * 0.846 - 3303 : 0
-  const meliGanancia = meliCobro - value('cost')
   const ahorroUf = value('savings') / 41000
   const metaUf = tramo === 1 ? 30 : tramo === 2 ? 40 : 80
   const avance = Math.min((ahorroUf / metaUf) * 100, 100)
@@ -336,10 +309,8 @@ function ProjectModal({ project, onClose }: { project: Project; onClose: () => v
           <div className="flex items-center gap-3"><div className="grid size-11 place-items-center rounded-xl bg-primary/10 text-primary"><Icon className="size-5" /></div><div><h2 className="font-bold tracking-tight">{project.name}</h2><p className="text-xs text-muted-foreground">Herramienta lista para usar</p></div></div>
           <button onClick={onClose} className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted" aria-label="Cerrar"><X className="size-4" /></button>
         </div>
-        {project.id === 'meli-bolt' && <><p className="mt-5 text-sm text-muted-foreground">Una aplicación web lista para consultar tu operación de Mercado Libre.</p><a href={project.path} target="_blank" rel="noreferrer" className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-3.5 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90">Abrir aplicación <ArrowUpRight className="size-3.5" /></a></>}
-        {project.id === 'panales' && <><p className="mt-5 text-sm text-muted-foreground">Calcula el costo unitario y descubre si el paquete conviene.</p><div className="mt-5 grid gap-3 sm:grid-cols-2">{field('price', 'Valor Total del Paquete', '$ 0')}{field('count', 'Cantidad de Pañales', '0')}</div><ResultBox title="Costo unitario" value={panal ? money(panal) : '$0'} tone={panal <= 230 ? 'green' : panal <= 255 ? 'orange' : 'red'} message={panal ? panal <= 230 ? '✅ ¡Costo conveniente para comprar!' : panal <= 255 ? '🟡 Más o menos conveniente' : '❌ No es conveniente' : undefined} /><button onClick={reset} className="mt-4 w-full rounded-lg border border-border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted">Limpiar formulario</button></>}
-        {project.id === 'meli' && <><p className="mt-5 text-sm text-muted-foreground">Estima tu cobro real después de comisión y costo del producto.</p><div className="mt-5 grid gap-3 sm:grid-cols-2">{field('sale', 'Valor de venta en MELI', '$ 0')}{field('cost', 'Costo de Premium Sale', '$ 0')}</div><div className="mt-5 grid gap-3 sm:grid-cols-2"><ResultBox title="Cobro MELI" value={money(meliCobro)} tone="orange" /><ResultBox title="Ganancia Neta" value={money(meliGanancia)} tone={meliGanancia >= 0 ? 'green' : 'red'} /></div><button onClick={reset} className="mt-4 w-full rounded-lg border border-border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted">Limpiar</button></>}
-        {project.id === 'vivienda' && <><div className="mt-5 flex rounded-lg border border-border bg-muted/40 p-1"><button onClick={() => setMode('ds1')} className={`flex-1 rounded-md px-3 py-2 text-xs font-semibold transition-all ${mode === 'ds1' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}>Subsidio DS1</button><button onClick={() => setMode('credito')} className={`flex-1 rounded-md px-3 py-2 text-xs font-semibold transition-all ${mode === 'credito' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}>Crédito Hipotecario</button></div>{mode === 'ds1' ? <><div className="mt-5 flex gap-2">{[1, 2, 3].map((item) => <button key={item} onClick={() => setTramo(item)} className={`flex-1 rounded-full border px-3 py-2 text-xs font-semibold transition-all ${tramo === item ? 'border-primary bg-primary text-primary-foreground shadow-sm' : 'border-border text-muted-foreground hover:bg-muted'}`}>Tramo {item} · {[30, 40, 80][item - 1]} UF</button>)}</div>{field('savings', 'Monto ahorrado en CLP', '$ 0')}<div className="mt-5 flex items-end justify-between"><div><p className="text-3xl font-bold tabular-nums">{ahorroUf.toFixed(2)} UF</p><p className="mt-1 text-xs text-muted-foreground">Meta: {metaUf}.00 UF</p></div><span className="text-sm font-bold text-primary tabular-nums">{avance.toFixed(2)}%</span></div><div className="mt-3 h-3 overflow-hidden rounded-full bg-muted"><div className={`h-full rounded-full transition-all duration-500 ${avance >= 100 ? 'bg-[#57945e]' : avance >= 30 ? 'bg-[#d68b45]' : 'bg-[#d66f56]'}`} style={{ width: `${avance}%` }} /></div><p className="mt-4 rounded-lg bg-muted p-3 text-sm">{avance >= 100 ? '¡Ahorro cumplido!' : avance >= 70 ? `Muy cerca de la meta, te faltan ${(metaUf - ahorroUf).toFixed(2)} UF` : avance >= 30 ? `Vas por buen camino, te faltan ${(metaUf - ahorroUf).toFixed(2)} UF` : `Aún te falta para Tramo ${tramo}, te faltan ${(metaUf - ahorroUf).toFixed(2)} UF`}</p></> : <><p className="mt-5 text-sm text-muted-foreground">Meta visual: 55 UF</p>{field('savings', 'Monto ahorrado en CLP', '$ 0')}<div className="mt-5 flex items-end justify-between"><p className="text-3xl font-bold tabular-nums">{ahorroUf.toFixed(2)} UF <span className="text-sm font-normal text-muted-foreground">ahorradas</span></p><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${creditoStatus[2]}`}>{creditoStatus[0]}</span></div><div className="mt-3 h-3 overflow-hidden rounded-full bg-muted"><div className={`h-full rounded-full transition-all duration-500 ${ahorroUf >= 55 ? 'bg-[#57945e]' : ahorroUf >= 35 ? 'bg-[#d68b45]' : 'bg-[#d66f56]'}`} style={{ width: `${Math.min((ahorroUf / 55) * 100, 100)}%` }} /></div><div className="mt-2 flex justify-between text-[10px] text-muted-foreground"><span>30 UF · Débil</span><span>35 UF · Aceptable</span><span>55 UF · Excelente</span></div><div className="mt-5 rounded-lg bg-muted p-4"><p className="text-sm font-semibold">Probabilidad de aprobación: {creditoStatus[1]}</p><p className="mt-1 text-xs text-muted-foreground">Nivel {creditoStatus[0]} basado en tu ahorro.</p></div></>}<button onClick={reset} className="mt-5 w-full rounded-lg border border-border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted">Limpiar</button></>}
+        {project.id === 'panales' &&<><p className="mt-5 text-sm text-muted-foreground">Calcula el costo unitario y descubre si el paquete conviene.</p><div className="mt-5 grid gap-3 sm:grid-cols-2">{field('price', 'Valor Total del Paquete', '$ 0')}{field('count', 'Cantidad de Pañales', '0')}</div><ResultBox title="Costo unitario" value={panal ? money(panal) : '$0'} tone={panal <= 230 ? 'green' : panal <= 255 ? 'orange' : 'red'} message={panal ? panal <= 230 ? '✅ ¡Costo conveniente para comprar!' : panal <= 255 ? '🟡 Más o menos conveniente' : '❌ No es conveniente' : undefined} /><button onClick={reset} className="mt-4 w-full rounded-lg border border-border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted">Limpiar formulario</button></>}
+        {project.id === 'vivienda' &&<><div className="mt-5 flex rounded-lg border border-border bg-muted/40 p-1"><button onClick={() => setMode('ds1')} className={`flex-1 rounded-md px-3 py-2 text-xs font-semibold transition-all ${mode === 'ds1' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}>Subsidio DS1</button><button onClick={() => setMode('credito')} className={`flex-1 rounded-md px-3 py-2 text-xs font-semibold transition-all ${mode === 'credito' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground'}`}>Crédito Hipotecario</button></div>{mode === 'ds1' ? <><div className="mt-5 flex gap-2">{[1, 2, 3].map((item) => <button key={item} onClick={() => setTramo(item)} className={`flex-1 rounded-full border px-3 py-2 text-xs font-semibold transition-all ${tramo === item ? 'border-primary bg-primary text-primary-foreground shadow-sm' : 'border-border text-muted-foreground hover:bg-muted'}`}>Tramo {item} · {[30, 40, 80][item - 1]} UF</button>)}</div>{field('savings', 'Monto ahorrado en CLP', '$ 0')}<div className="mt-5 flex items-end justify-between"><div><p className="text-3xl font-bold tabular-nums">{ahorroUf.toFixed(2)} UF</p><p className="mt-1 text-xs text-muted-foreground">Meta: {metaUf}.00 UF</p></div><span className="text-sm font-bold text-primary tabular-nums">{avance.toFixed(2)}%</span></div><div className="mt-3 h-3 overflow-hidden rounded-full bg-muted"><div className={`h-full rounded-full transition-all duration-500 ${avance >= 100 ? 'bg-[#57945e]' : avance >= 30 ? 'bg-[#d68b45]' : 'bg-[#d66f56]'}`} style={{ width: `${avance}%` }} /></div><p className="mt-4 rounded-lg bg-muted p-3 text-sm">{avance >= 100 ? '¡Ahorro cumplido!' : avance >= 70 ? `Muy cerca de la meta, te faltan ${(metaUf - ahorroUf).toFixed(2)} UF` : avance >= 30 ? `Vas por buen camino, te faltan ${(metaUf - ahorroUf).toFixed(2)} UF` : `Aún te falta para Tramo ${tramo}, te faltan ${(metaUf - ahorroUf).toFixed(2)} UF`}</p></> : <><p className="mt-5 text-sm text-muted-foreground">Meta visual: 55 UF</p>{field('savings', 'Monto ahorrado en CLP', '$ 0')}<div className="mt-5 flex items-end justify-between"><p className="text-3xl font-bold tabular-nums">{ahorroUf.toFixed(2)} UF <span className="text-sm font-normal text-muted-foreground">ahorradas</span></p><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${creditoStatus[2]}`}>{creditoStatus[0]}</span></div><div className="mt-3 h-3 overflow-hidden rounded-full bg-muted"><div className={`h-full rounded-full transition-all duration-500 ${ahorroUf >= 55 ? 'bg-[#57945e]' : ahorroUf >= 35 ? 'bg-[#d68b45]' : 'bg-[#d66f56]'}`} style={{ width: `${Math.min((ahorroUf / 55) * 100, 100)}%` }} /></div><div className="mt-2 flex justify-between text-[10px] text-muted-foreground"><span>30 UF · Débil</span><span>35 UF · Aceptable</span><span>55 UF · Excelente</span></div><div className="mt-5 rounded-lg bg-muted p-4"><p className="text-sm font-semibold">Probabilidad de aprobación: {creditoStatus[1]}</p><p className="mt-1 text-xs text-muted-foreground">Nivel {creditoStatus[0]} basado en tu ahorro.</p></div></>}<button onClick={reset} className="mt-5 w-full rounded-lg border border-border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted">Limpiar</button></>}
       </div>
     </div>
   )
